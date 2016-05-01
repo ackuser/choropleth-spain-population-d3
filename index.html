@@ -2,7 +2,20 @@
 <meta charset="utf-8">
 <style>
 
-/* CSS goes here. */
+.subunit.Madrid { fill: #ddc; }
+.subunit.Sevilla { fill: red; }
+.subunit.Ceuta { fill: blue; }
+
+.subunit-boundary {
+  fill: none;
+  stroke: #777;
+  stroke-dasharray: 2,2;
+  stroke-linejoin: round;
+}
+
+/*.subunit-boundary.IRL {
+  stroke: #aaa;
+}*/
 
 </style>
 <body>
@@ -14,7 +27,8 @@ var width = 960,
     height = 1160;
 
 var projection = d3.geo.mercator()
-    .scale(500)
+    .center([0, 35])
+    .scale(1500)
     .translate([width / 2, height / 2]);
 
 var path = d3.geo.path()
@@ -25,9 +39,21 @@ var svg = d3.select("body").append("svg")
     .attr("height", height);
 
 d3.json("spain.json", function(error, spain) {
+  svg.selectAll(".subunit")
+      .data(topojson.feature(spain, spain.objects.subunits).features)
+    .enter().append("path")
+    .attr("class", function(d) { return "subunit " + d.properties.name; })
+    .attr("d", path);
+
   svg.append("path")
-      .datum(topojson.feature(spain, spain.objects.subunits))
-      .attr("d", path);
+      .datum(topojson.mesh(spain, spain.objects.subunits, function(a, b) { return a !== b; }))
+      .attr("d", path)
+      .attr("class", "subunit-boundary");
+
+  // svg.append("path")
+  //     .datum(topojson.mesh(spain, spain.objects.subunits, function(a, b) { return a === b; }))
+  //     .attr("d", path)
+  //     .attr("class", "subunit-boundary IRL");
 });
 
 </script>
