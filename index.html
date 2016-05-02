@@ -2,9 +2,9 @@
 <meta charset="utf-8">
 <style>
 
-.subunit.Madrid { fill: #ddc; }
+/*.subunit.Madrid { fill: #ddc; }
 .subunit.Sevilla { fill: red; }
-.subunit.Ceuta { fill: blue; }
+.subunit.Ceuta { fill: blue; }*/
 
 .subunit-boundary {
   fill: none;
@@ -15,20 +15,22 @@
 
 .place,
 .place-label {
-  fill: green;
+  fill: red;
 }
 
 text {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 10px;
   pointer-events: none;
+  text-transform: capitalize;
+  font-weight: bold;
 }
 
 div.tooltip {
   position: absolute;
   text-align: center;
   width: 60px;
-  height: 38px;
+  height: 18px;
   padding: 2px;
   font: 10px sans-serif;
   background: lightsteelblue;
@@ -62,10 +64,12 @@ div.tooltip {
   <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
   <script src="//d3js.org/queue.v1.min.js"></script>
   <script src="//d3js.org/topojson.v1.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/d3-legend/1.10.0/d3-legend.min.js"></script>
   <script>
+
   var color = d3.scale.linear()
-  .domain([0.1, 0.18, 0.26, 0.33, 0.41])
-  .range(["#ca0020", "#f4a582", "#f7f7f7", "#92c5de", "#0571b0"])
+  .domain([0, .02, .05, .15])
+  .range(["rgb(247,251,255)", "rgb(198,219,239)", "rgb(33,113,181)", "rgb(8,48,107)"])
 
   var rateByName = d3.map();
 
@@ -73,13 +77,30 @@ div.tooltip {
   height = 1160;
 
   var projection = d3.geo.mercator()
-  .center([-10, 32])
+  .center([-10, 30])
   .scale(1800)
   .translate([width / 2, height / 2]);
 
   var path = d3.geo.path()
   .projection(projection)
   .pointRadius(2);
+
+  d3.select("body").append("svg")
+  .attr("class", "legend")
+
+  var legend = d3.legend.color()
+  .shapeHeight(10)
+  .shapeWidth(50)
+  .shapePadding(0)
+  .labelOffset(5)
+  .labelFormat(d3.format("%"))
+  .orient("horizontal")
+  .labelAlign("start")
+  .scale(color)
+
+  d3.select(".legend")
+  .call(legend)
+
 
   var svg = d3.select("body").append("svg")
   .attr("width", width)
@@ -91,37 +112,29 @@ div.tooltip {
   .style("opacity", 0);
 
   queue()
-      .defer(d3.json, "spain.json")
-      .defer(d3.csv, "spain-cities-population.csv", function(d) {
-        // map.push(d.id, d.name, +d.population);
-        // var aux = {id:d.id, name:d.name, pop:+d.population}
-        // map.push(aux);
-        rateByName.set(d.name, +d.population);
-// debugge
-       })
-      .await(ready);
+  .defer(d3.json, "spain.json")
+  .defer(d3.tsv, "spain-provinces-population.tsv", function(d) {
+    // console.log(d.Nombre + " " + d['Porcentaje_Población'])
+    rateByName.set(d.Nombre, +d['Porcentaje_Población']);
+
+  })
+  .await(ready);
 
   function ready(error, spain){
     // console.log(map)
-
     var quantize = d3.scale.quantize()
-      .domain([0, 3141991])
-      .range(d3.range(9).map(function(i) { return "q" + i + "-9"; }));
+    .domain([0, 5])
+    .range(d3.range(9).map(function(i) { return "q" + i + "-9"; }));
 
     svg.selectAll(".subunit")
     .data(topojson.feature(spain, spain.objects.subunits).features)
     .enter().append("path")
     .attr("class", function(d) {
-      var aux = quantize(rateByName.get(d.properties.name));
-      console.log(d.properties.name)
-      console.log(rateByName.get(d.properties.name))
-      console.log(aux)
-
-      var cities = spain.objects.subunits.geometries.forEach(function(obj){return obj})
       return "subunit " + d.properties.name; })
       .attr("class", function(d) { return quantize(rateByName.get(d.properties.name)); })
       .attr("d", path)
       .on("mouseover", function(d) {
+        console.log(d.properties.name)
         div.transition()
         .duration(200)
         .style("opacity", .9);
