@@ -25,32 +25,57 @@ text {
 }
 
 div.tooltip {
-    position: absolute;
-    text-align: center;
-    width: 60px;
-    height: 38px;
-    padding: 2px;
-    font: 10px sans-serif;
-    background: lightsteelblue;
-    border: 0px;
-    border-radius: 8px;
-    pointer-events: none;
+  position: absolute;
+  text-align: center;
+  width: 60px;
+  height: 38px;
+  padding: 2px;
+  font: 10px sans-serif;
+  background: lightsteelblue;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
 }
 
 
+.q0-9 { fill:rgb(247,251,255); }
+.q1-9 { fill:rgb(222,235,247); }
+.q2-9 { fill:rgb(198,219,239); }
+.q3-9 { fill:rgb(158,202,225); }
+.q4-9 { fill:rgb(107,174,214); }
+.q5-9 { fill:rgb(66,146,198); }
+.q6-9 { fill:rgb(33,113,181); }
+.q7-9 { fill:rgb(8,81,156); }
+.q8-9 { fill:rgb(8,48,107); }
+
+
+.legend {
+  display: table;
+  margin: 0 auto;
+  font-family: "Helvetica Neue", sans-serif;
+  font-size: 12px;
+  height: 35px;
+  width: 250px;
+}
 </style>
 <body>
-  <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script></script>
+  <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="//d3js.org/queue.v1.min.js"></script>
   <script src="//d3js.org/topojson.v1.min.js"></script>
   <script>
+  var color = d3.scale.linear()
+  .domain([0.1, 0.18, 0.26, 0.33, 0.41])
+  .range(["#ca0020", "#f4a582", "#f7f7f7", "#92c5de", "#0571b0"])
+
+  var rateByName = d3.map();
 
   var width = 960,
   height = 1160;
 
   var projection = d3.geo.mercator()
-      .center([-10, 32])
-      .scale(1800)
-      .translate([width / 2, height / 2]);
+  .center([-10, 32])
+  .scale(1800)
+  .translate([width / 2, height / 2]);
 
   var path = d3.geo.path()
   .projection(projection)
@@ -62,54 +87,76 @@ div.tooltip {
 
   // Define the div for the tooltip
   var div = d3.select("body").append("div")
-      .attr("class", "tooltip")
-      .style("opacity", 0);
+  .attr("class", "tooltip")
+  .style("opacity", 0);
 
-  d3.json("spain.json", function(error, spain) {
+  queue()
+      .defer(d3.json, "spain.json")
+      .defer(d3.csv, "spain-cities-population.csv", function(d) {
+        // map.push(d.id, d.name, +d.population);
+        // var aux = {id:d.id, name:d.name, pop:+d.population}
+        // map.push(aux);
+        rateByName.set(d.name, +d.population);
+// debugge
+       })
+      .await(ready);
+
+  function ready(error, spain){
+    // console.log(map)
+
+    var quantize = d3.scale.quantize()
+      .domain([0, 3141991])
+      .range(d3.range(9).map(function(i) { return "q" + i + "-9"; }));
+
     svg.selectAll(".subunit")
     .data(topojson.feature(spain, spain.objects.subunits).features)
     .enter().append("path")
-    .attr("class", function(d) { return "subunit " + d.properties.name; })
-    .attr("d", path)
-    .on("mouseover", function(d) {
-      console.log(d.properties)
-          div.transition()
-              .duration(200)
-              .style("opacity", .9);
-          div	.html(d.properties.name)
-              .style("left", (d3.event.pageX) + "px")
-              .style("top", (d3.event.pageY - 28) + "px");
-          })
+    .attr("class", function(d) {
+      var aux = quantize(rateByName.get(d.properties.name));
+      console.log(d.properties.name)
+      console.log(rateByName.get(d.properties.name))
+      console.log(aux)
+
+      var cities = spain.objects.subunits.geometries.forEach(function(obj){return obj})
+      return "subunit " + d.properties.name; })
+      .attr("class", function(d) { return quantize(rateByName.get(d.properties.name)); })
+      .attr("d", path)
+      .on("mouseover", function(d) {
+        div.transition()
+        .duration(200)
+        .style("opacity", .9);
+        div	.html(d.properties.name)
+        .style("left", (d3.event.pageX) + "px")
+        .style("top", (d3.event.pageY - 28) + "px");
+      })
       .on("mouseout", function(d) {
-          div.transition()
-              .duration(500)
-              .style("opacity", 0);
+        div.transition()
+        .duration(500)
+        .style("opacity", 0);
       });
 
-    svg.append("path")
-    .datum(topojson.mesh(spain, spain.objects.subunits, function(a, b) { return a !== b; }))
-    .attr("d", path)
-    .attr("class", "subunit-boundary");
+      svg.append("path")
+      .datum(topojson.mesh(spain, spain.objects.subunits, function(a, b) { return a !== b; }))
+      .attr("d", path)
+      .attr("class", "subunit-boundary");
+      svg.append("path")
+      .datum(topojson.feature(spain, spain.objects.places))
+      .attr("d", path)
+      .attr("class", "place");
 
-    svg.append("path")
-    .datum(topojson.feature(spain, spain.objects.places))
-    .attr("d", path)
-    .attr("class", "place");
-
-    svg.selectAll(".place-label")
+      svg.selectAll(".place-label")
       .data(topojson.feature(spain, spain.objects.places).features)
-    .enter().append("text")
+      .enter().append("text")
       .attr("class", "place-label")
       .attr("transform", function(d) {
-        console.log(projection(d.geometry.coordinates))
         return "translate(" + projection(d.geometry.coordinates) + ")"; })
-      .attr("x", function(d) { return d.geometry.coordinates[0] > -1 ? 6 : -6; })
-      .attr("dy", ".15em")
-      .style("text-anchor", function(d) { return d.geometry.coordinates[0] > -1 ? "start" : "end"; })
-      .text(function(d) {
-        // debugger
-        console.log(d)
-        return d.properties.NAME; });
-  });
+        .attr("x", function(d) { return d.geometry.coordinates[0] > -1 ? 6 : -6; })
+        .attr("dy", ".15em")
+        .style("text-anchor", function(d) { return d.geometry.coordinates[0] > -1 ? "start" : "end"; })
+        .text(function(d) {
+          // debugger
+          // console.log(d.properties.NAME + " " + d.properties.POP_MAX)
+          return d.properties.NAME; });
+        };
 
-  </script>
+        </script>

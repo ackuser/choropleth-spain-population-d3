@@ -3,4 +3,4 @@ Choropleth using D3.js - List of metropolitan areas in Spain
 
 Information from [wikipedia]
 
-   [wikipedia]: <https://en.wikipedia.org/w/index.php?title=List_of_metropolitan_areas_in_Spain>
+   [wikipedia]: <https://en.wikipedia.org/wiki/Ranked_lists_of_Spanish_municipalities>
